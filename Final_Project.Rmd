@@ -1,0 +1,644 @@
+---
+title: "Armenian Football"
+author: "Aram Barseghyan, Davit Ohanjanyan, Luiza Stepanyan, Nina Lazaryan"
+date: '2023-12-11'
+output:
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+
+library(ggplot2)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(sf)
+library(raster)
+library(fmsb)
+library(gridExtra)
+library(openxlsx)
+library(corrplot)
+library(grid)
+library(lubridate)
+```
+
+\newpage
+
+## Overview
+
+What is the condition of Armenian football? If you ask Armenians this simple question, the majority will smile skeptically and tell you that we don't have football. That is how badly everyone is perceiving the situation in football. 
+
+In this project, we will analyze where Armenia stands in terms of football and how we compare with similar countries, especially our neighboring countries – Georgia and Azerbaijan. Thereon, we will explore our country's main problems and trends regarding football and compare them to Georgia and Azerbaijan.
+
+The results of our study will be interesting to football enthusiasts and different kinds of statisticians/data scientists. Furthermore, the people who have some connection to the Armenian Football Federation and Armenian clubs can analyze valuable insights about the condition of our national team/league/clubs to emphasize their drawbacks and develop the sport in the country.
+
+## Research Methodology
+
+We collected the data by hand. We used different websites, like Transfermarkt, Official FIFA and UEFA websites, National-Football-Teams.com, etc. We have four datasets:
+1. The first dataset contains information about the countries and national teams of UEFA (Union of European Football Associations).
+2. The second dataset contains information about the national football teams of Georgia, Azerbaijan, and Armenia and shows the data for the countries from 2010 to 2022.
+3. The third dataset contains information about the national football leagues of Georgia, Azerbaijan, and Armenia and shows the data for the countries from 2010 to 2022.
+4. The fourth dataset contains information about the Armenian National League football teams and shows the data from 2010 to 2022.
+
+We worked with R programming language to develop insights about our collected data, primarily using visualizations. We also used some statistical tools and approaches to test our hypotheses. Additionally, RShiny was used to create an interactive dashboard for football enthusiasts and other interested people.
+
+## Literatue Review
+
+Discussing the research and literature that was made about the topic of ours, we should determine whether we consider our topic to be analysis of exactly Armenian football, or any data analysis about any kind of sport overall. Referring to both formulations, we can say that we found no prior research that was conducted about Armenian football, and that was the most exciting aspect of it: we could be the first ones to do analysis, and use the magic of data visualization to analyze the topic we are interested in. 
+
+We did not search for any other foreign literature about data analysis about sports, so there is no more literature review to document. 
+
+## Hypotheses
+
+First, we want to compare Armenia to other European countries to see if different variables impact the ranking in international football.
+Then, we want to see where we stand compared to similar countries. After that, we want to test a sub-hypothesis - if being a post-Soviet country impacts the country's football situation. So, in the first part, we want to find out the main factors contributing to the country's FIFA rankings.
+
+In the second part of the project, we want to compare the performances of Armenian, Georgian, and Azerbaijani national football teams through the years. We will see if we have any developments or setbacks in different aspects of the sport. 
+
+After that, we will see if there is a correlation between National Football Teams and National Football Leagues. We will analyze if developments or setbacks exist in different aspects of the national leagues.
+
+In the concluding part, we will analyze Armenia's football teams. We will see the main problems the league and the teams face through visualizations.
+
+```{r include=FALSE}
+arm_nt <- read_excel("ArmenianNT.xlsx")
+arm_pl_league <- read_excel("ArmenianPL_League.xlsx")
+nt_europe <- read_excel("NationalTeams_Europe.xlsx")
+armenian_team_dat <- read_excel("ArmenianPL_Teams.xlsx")
+data <- read_excel("NationalTeams_Europe.xlsx")
+arm_pl_league$Season <- as.Date(substr(arm_pl_league$Season, 1, 4), format = "%Y")
+arm_nt$Year <- as.Date(paste0(arm_nt$Year, "-01-01"))
+filtered_df1 <- arm_pl_league %>%
+  filter(NationalLeague == "Armenia")
+filtered_df2 <- arm_nt %>%
+  filter(NationalTeam == "Armenia")
+```
+
+```{r include=FALSE}
+data$Population_Millions <- data$Population / 1000000
+data$GDP_TenThousands <- data$GDPperCapita / 10000
+selected_countries <- c(" Armenia", " Azerbaijan", " Georgia", " Croatia", " Bosnia & Herzegovina", " Wales", " Lithuania", " Albania", " Moldova", " Slovenia", " North Macedonia", " Belarus")
+selected_data <- data %>%
+  filter(NationalTeam %in% selected_countries)
+```
+
+## UEFA National Football Teams Analysis
+
+```{r echo=FALSE}
+plot1<-ggplot(data, aes(x = FIFAPosition, y = log(Population_Millions))) +
+  geom_point() +
+  geom_smooth(color = "blue") +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = log(Population_Millions)), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "", y = "Population(log)", title = "Population") +
+  theme_minimal()
+plot2<-ggplot(data, aes(x = FIFAPosition, y = log(TeamMarketValue))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = log(TeamMarketValue)), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "", y = "Value(log)", title = "Team Market Value") +
+  theme_minimal()
+plot3<-ggplot(data, aes(x = FIFAPosition, y = Played)) +
+  geom_point() +
+  geom_smooth(color = "blue") +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = Played), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "", y = "Matches", title = "Matches Played") +
+  theme_minimal()
+plot4<-ggplot(data, aes(x = FIFAPosition, y = AverageAttendance)) +
+  geom_point() +
+  geom_smooth(color = "blue") +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = AverageAttendance), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "Ranking", y = "Attendance", title = "Average Attendance") +
+  theme_minimal()
+plot5<-ggplot(data, aes(x = FIFAPosition, y = AverageAge)) +
+  geom_point() +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = AverageAge), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "Ranking", y = "Age", title = "Average Age") +
+  theme_minimal()
+plot6<-ggplot(data, aes(x = FIFAPosition, y = GDP_TenThousands)) +
+  geom_point() +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = GDP_TenThousands), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "Ranking", y = "GDPPC", title = "GDP per Capita") +
+  theme_minimal()
+
+grid.arrange(plot1,plot2,plot3,plot4,plot5,plot6, ncol=3,
+     top = textGrob("Relation of FIFA Ranking with *",gp=gpar(fontsize=12,font=3)))
+```
+
+We compared different attributes of UEFA Countries with FIFA position, which indicates where the team ranks in terms of football globally. The point in the red circle is Armenia. We compared FIFA Position with Population, Team Market Value, Matches Played, and Average Attendance and saw that they correlated. The graphs show that a higher population, higher market value, more matches played in the country's history, and higher average attendance correlate with having a better FIFA Ranking. We can see that Armenia stands exactly where it should in terms of these variables, and we are not underperforming regarding our population and the other variables. We could also see that the average age of the players and GDP per capita have no relation to the football team.
+
+```{r echo=FALSE}
+p1<-ggplot(selected_data, aes(x = reorder(NationalTeam, FIFAPosition), y = FIFAPosition, fill = NationalTeam)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = ifelse(selected_data$NationalTeam == " Armenia", "red", "blue")) +
+  labs(x = "", y = "Ranking", title = "FIFA Ranking") +
+  theme(legend.position = "none")+
+  coord_flip()
+p2<-ggplot(selected_data, aes(x = reorder(NationalTeam, TeamMarketValue), y = TeamMarketValue, fill = NationalTeam)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = ifelse(selected_data$NationalTeam == " Armenia", "red", "blue")) +
+  labs(x = "", y = "Value", title = "Team Market Value") +
+  theme(legend.position = "none")+
+  coord_flip()
+grid.arrange(p1, p2, ncol = 2)
+```
+We took European countries similar to Armenia in terms of population or GDP per capita and compared these countries in terms of football. We can see that we are standing somewhere in the middle – not very bad and not very good. However, we can see that we are far behind in the team’s market value – around half the value that most of our similar countries have.
+
+```{r echo=FALSE,fig.width=12,fig.height=12}
+p1<-ggplot(data, aes(x = FIFAPosition, y = log(Population_Millions))) +
+  geom_point(aes(color = factor(PostSoviet)), size = 2) +
+  geom_smooth(color = "blue") +
+  geom_point(data = subset(data, NationalTeam == " Armenia"), aes(x = FIFAPosition, y = log(Population_Millions)), pch=21, fill=NA, size=4, colour="red", stroke=1) +
+  labs(x = "Ranking", y = "Population(log)", title = "FIFA Ranking vs Population") +
+  theme_minimal() +
+  scale_color_manual(values = c("black", "red"), labels = c("Non-PostSoviet", "PostSoviet"))+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(color="Country")
+p2<-ggplot(data, aes(x = factor(PostSoviet), y = FIFAPosition)) +
+  geom_boxplot() +
+  labs(x = "", y = "Position", title = "FIFA Position for PostSoviet and non PostSoviet countries") +
+  scale_fill_manual(values = c("blue", "red"), labels = c("Non-PostSoviet", "PostSoviet")) +
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_x_discrete(labels = c("Non Post Soviet", "Post Soviet"))
+p3<-ggplot(selected_data, aes(x = reorder(NationalTeam, FIFAPosition), y = FIFAPosition, fill = NationalTeam)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = ifelse(selected_data$PostSoviet == 1, "red", "blue")) +
+  labs(x = "", y = "Ranking", title = "FIFA Ranking by National Team") +
+  theme(legend.position = "none",plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+p4<-ggplot(selected_data, aes(x = reorder(NationalTeam, TeamMarketValue), y = TeamMarketValue, fill = NationalTeam)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = ifelse(selected_data$PostSoviet == 1, "red", "blue")) +
+  labs(x = "", y = "Value", title = "Team Market Value by National Team") +
+  theme(legend.position = "none",plot.title = element_text(hjust = 0.5))+
+  coord_flip()
+grid.arrange(p1,p2,p3,p4, ncol = 2)
+```
+
+Nevertheless, we could see some patterns in our data. We noticed that the countries that were part of the Soviet Union performed far worse than those not in the USSR. From here, we can say that one of the reasons why we don’t perform better in football is that we were part of the Soviet Union, where maybe football wasn’t given much importance or had low financing, insufficient infrastructure, etc. On the first graph, we can see that most post-Soviet countries have worse FIFA rankings than they are supposed to have, considering their population. We can see that also on the boxplot, where most post-Soviet countries have a worse ranking than most non-post-Soviet countries. On the lower graphs, we can see that among similar countries of Armenia, the ones with worse statistics were part of the Soviet Union. The only outlier is Georgia, which has the second-highest team market value among the selected countries. That is mainly because of Khvicha Kvaratskhelia, which has a market value of 85 million euros.
+
+```{r echo=FALSE}
+ggplot(filtered_df2, aes(x = Year, y = FIFARanking)) +
+  geom_line(size = 0.6) +
+  labs(title = "FIFA Ranking of Armenia Over Time",
+       x = "Year",
+       y = "Ranking") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+But although we can see that it is okay how our football team performs now, we know that we could do better. For example, we can see that until 2014, we were at least 75th in the FIFA Ranking, but from then on, we could not have results like that. We could reach even the 34th position in 2013, meaning we were the 34th best team in the world. So, we will later analyze what are the main factors that contribute to the FIFA Ranking.
+
+```{r echo=FALSE}
+selected_data1 <- data[data$NationalTeam %in% selected_countries, c("NationalTeam", "WinPercentage", "AverageAttendance", "TeamMarketValue", "FIFAPosition", "GDPperCapita", "Population", "AverageAge", "GF_P", "Played")]
+correlation_matrix <- cor(selected_data1[, -1])
+corrplot(correlation_matrix, method = "color", order = "hclust", tl.col = "black", tl.srt = 90)
+```
+Here, we can see how different variables impact each other for the UEFA Countries. As we are interested in the FIFA Position, we can see that Average Attendance, Team Market Value, Win Percentage, and Goals per Match have the most impact on it. We will ignore Win Percentage and GFM, as it is evident that the more goals you score per match, the more games you win, and the more games you win, the better team you have. And regarding Average Attendance, we think that it works oppositely. The better the national team plays – the more people go to watch it, not the opposite. So, we will concentrate on Team Market Value, which means that Higher Team Market Value – the better the team plays. And the team market value is higher when the team has better players. So, let’s dig deeper into analyzing our market value.
+
+## South Caucasus National Football Teams Analysis
+
+```{r include=FALSE}
+arm_nt_mutated <- arm_nt %>%
+  mutate(PPM_Opponents = PPM / OpponentsAvgRanking)
+arm_nt_mutated$Year <- as.Date(paste0(arm_nt_mutated$Year, "-01-01"))
+Homegrown <- data.frame(
+  NationalTeam = c("Armenia", "Azerbaijan", "Georgia"),
+  Homegrown = c(1200/24, 1700/25, 2300/24)
+)
+```
+```{r echo=FALSE}
+p1<-ggplot(arm_nt_mutated, aes(x = Year, y = MarketValue, color = NationalTeam)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Market Value of National Teams", x = "", y = "Market Value")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(color="National Team")
+p2<-ggplot(arm_nt_mutated, aes(x = Year, y = PPM_Opponents, color = NationalTeam)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Point Per Match for equal opponents", x = "Year", y = "PPM/Opponent")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(color="National Team")
+grid.arrange(p1,p2, ncol = 1)
+```
+The first line chart shows how the market value of Armenian, Georgian, and Azerbaijani national football teams has changed. We can see that over six years – from 2013 to 2018 we had the best football team across three nations, but after that, the Georgian team got significantly better and now has a massive advantage over us. 
+We can also see that Azerbaijan had the worst team of the three throughout the whole period. 
+The second graph shows how each team performed over the years. The points per match the team collected are divided by opponents' average ranking to get more normalized results. We can see that Azerbaijan constantly performs poorly. We get very shaky results, which can be different year by year, and Georgia has improved its results since 2013. We can assume that market value impacts performance, as in both cases, Georgia improves its performance, Azerbaijan is the worst among the three, and Armenia's results have fluctuated over the years.
+
+```{r echo=FALSE,fig.width=7}
+p1<-ggplot(arm_nt_mutated, aes(x = Year, y = LeaguePlayersGamesPercent, color = NationalTeam)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "League Players Percentage for National Teams", x = "Year", y = "Players Percent") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(color="National Team")
+p2<-ggplot(Homegrown, aes(x = NationalTeam, y = Homegrown)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Homegrown players percentage by National Team", x = "", y = "") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(p1,p2, ncol = 1)
+```
+So, as we saw that we need higher market value for better performances, we could conclude that we need better footballers. And where do better footballers come from? – the national league. Most of the nation's players start their careers in some clubs in their homeland, and if they are good enough, they transfer to better clubs in other countries.
+In the first graph, we can see the percentage of the players playing in their national league for the three countries through the years. We can see that the best Azerbaijani players mostly play in their league. Conversely, less than 25% of Georgia's best players play in the Georgian league. For Armenia, we can see that starting from 2011, when we had only 25% of players playing in our league, the percentage is growing, and now we have more than 50%. Considering the previous graphs, we can say that this is bad, as we can assume that if an Armenian/Georgian/Azerbaijani player plays in its national league, he is not good enough to play abroad, so the quality is worse.
+
+On the other hand, we can hypothesize that Georgia just invites good players from other countries to play for its national team, that's why its players mostly play abroad. But the second graph here shows the percentage of current national team players born and raised in their respective countries and started their careers there. And we can see that 23 out of 24 Georgian players actually were born and raised in Georgia. On the other hand, only 12 of 24 Armenian players started their careers here. Some of the other players even have no roots in Armenia. We have players from Nigeria, Colombia, Argentina, Germany, Serbia, Russia, etc.
+From here, we can assume that Georgian players start their careers in Georgia, play in the Georgian league, and then move abroad. And Armenian players that start their careers in the Armenian league, are or not good enough, either don't get good enough to earn transfers to better clubs in other countries,
+
+```{r echo=FALSE, fig.height=7, fig.width=14}
+countries <- unique(arm_nt$NationalTeam)
+country <- countries[1]
+cor_data <- arm_nt %>%
+  filter(NationalTeam == country) %>%
+  dplyr::select(Coach, LeaguePlayersGamesPercent, MarketValue, GF_P, AverageAge, PPM,FIFARanking)
+  
+cor_matrix <- cor(cor_data)
+coach_correlation <- cor_matrix["Coach", ]
+  
+p1<-ggplot(data = data.frame(var1 = names(coach_correlation), value = coach_correlation),
+         aes(x = var1, y = "ForeignCoach", fill = value)) +
+    geom_tile() +
+    geom_text(aes(label = round(value, 2)), color = "black", size = 3) +
+    scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limits = c(-1, 1)) +
+    labs(title = "Correlation Heatmap for Armenia accross different features",
+         x = "",
+         y = "") +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.title.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text.x = element_text(size = 11),
+      )+
+  scale_x_discrete(labels = c("Average Age", "Coach", "FIFA Ranking", "Goals Scored/Match","League Players Games(%)","Market Value","Points Per Match"))+
+  labs(fill = "Correlation")
+
+coach_count <- arm_nt %>%
+  group_by(NationalTeam, Year, Coach) %>%
+  summarise(count = n())
+
+coach_count <- coach_count %>%
+  mutate(Year = year(Year))
+
+p2<-ggplot(coach_count, aes(x = NationalTeam, y = count, fill = factor(Coach))) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Foreign or Domestic Coach by Country and Year",
+       x = "",
+       y = "") +
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"), labels = c("Foreign", "Domestic")) +
+  facet_wrap(~Year, scales = "free") +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+        )+
+  labs(fill = "Coach") 
+grid.arrange(p1,p2, ncol = 1)
+```
+Another factor that can contribute to the national team's performance is the coach. These graphs show whether the coaches of Armenia, Azerbaijan, and Georgia are foreign or from their nation. We can see that Azeri almost always had a foreign coach, and Georgia had a domestic coach until 2015 but changed to foreign ones after that. Armenia had some different coaches but came back to foreign coaches after 2020. On the heatmap, we can see the relation of the foreign coach and various other variables. We can see that with foreign coaches, teams score more goals and have fewer players playing in their domestic league, from where we can assume that maybe having a foreign and experienced coach is better for these countries.
+
+```{r echo=FALSE}
+p1<-ggplot(arm_nt, aes(x = AverageAge, fill = NationalTeam)) +
+  geom_density(alpha = 0.7) +
+  labs(title = "Distribution of Average Age",
+       x = "Age",
+       y = "Density") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill = "National Team")
+p2<-ggplot(arm_nt, aes(x = Year, y = AverageAge, color = NationalTeam)) +
+  geom_line(size = 1) +
+  labs(title = "Average Age of Players Over Time",
+       x = "Year",
+       y = "Age") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(color = "National Team")
+grid.arrange(p1,p2, ncol = 1)
+```
+Another factor that can contribute to national team performances is the average age of players. On the first graph, we can see that Armenia had a higher variance in the average age of its players, whereas Georgian players’ age was very stable. In the second graph, we can notice that after 2011, Armenian players’ average age is increasing until 2019. One guess we can make here is that we are not getting enough good-quality young players to play for the national teams, so the same players play, and they get older.
+
+\newpage
+
+## South Caucasus National Football Leagues Analysis
+
+```{r echo=FALSE,fig.height=5,fig.width=15}
+p1<-ggplot(arm_pl_league,aes(x=Season,y=UEFARanking))+
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  labs(title="UEFA Ranking of National Leagues over time",y="Ranking")+
+  theme(
+    panel.grid = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),
+    plot.title = element_text(hjust = 0.5)
+  )+
+  facet_wrap(~NationalLeague)
+p2<-ggplot(arm_pl_league,aes(x=Season,y=MarketValue))+
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  labs(title="Market Value of National Leagues over time",y="Value")+
+  theme(
+    panel.grid = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),
+    plot.title = element_text(hjust = 0.5)
+  )+
+  facet_wrap(~NationalLeague)
+grid.arrange(p1,p2, ncol = 2)
+```
+So, the most evident problem we got was the national league of Armenia. Let’s dig deeper into it. Here, we can see how the leagues of 3 countries compare over the years. UEFA Ranking consists of only 54 countries, so we can see that until 2015, we had a terrible league – even ranking 50th in Europe, the 5th worst result on the continent. However, we can see that we are getting better over the years. Azerbaijan had the best league of the three all the time, consistently getting high places. In contradiction, Georgia had a better league at the start of the period of our observations and got worse over the years.
+
+In line with that, we can see that the Armenian League’s players’ total market value significantly increased over this period. However, it didn’t even reach the starting point of Azerbaijan yet.
+
+```{r echo=FALSE,fig.height=5}
+p1<-ggplot(filtered_df1,aes(x=Season,y=MarketValue))+
+  geom_bar(stat="identity") +
+  labs(title="National League",y="Value")+
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  )
+p2<-ggplot(filtered_df2,aes(x=Year,y=MarketValue))+
+  geom_bar(stat="identity") +
+  labs(title="National Team",y="")+
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  )
+grid.arrange(p1,p2,ncol=2,
+     top = textGrob("Market Values of Armenian *",gp=gpar(fontsize=12,font=3)))
+```
+However, in line with the increase in the market value of the national league, we can see that the market value of our national team has decreased. From here, we guess one of the roots of the problem – foreigners in the league. We can assume that the increase in the market value of the national league is connected with the increase in the number of foreigners in the league.
+
+```{r echo=FALSE}
+filtered_arm <- arm_pl_league %>%
+  filter(NationalLeague == "Armenia")
+ggplot(filtered_arm, aes(x = Season, y = MarketValue)) +
+  geom_bar(stat = "identity") +
+  geom_line(aes(y = ForeignersMinutesPercent, group = 1, colour = "Foreigners Gametime"), size = 1.5)+
+  labs(title="Market Value of Armenian League over time ",subtitle="Line: Minutes played by Foreigners",y="Value")+
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust=0.5)
+    )
+```
+Thanks to this graph, we can confirm our hypothesis. We can see that with the increase in the league's market value, the percentage of foreign players in the league increases. Foreign players have a higher class and thus have higher market value. So, we can assume that most of the increase in the league's market value is connected with the foreign players, and the value of Armenian players that play in the national league didn't change significantly.
+
+```{r echo=FALSE,fig.width=8}
+result_df1<-data.frame(NationalsInTop10Goalscorers=filtered_df1$NationalsInTop10Goalscorers,GoalsFor=filtered_df2$GoalsFor)
+
+p1<-ggplot(arm_pl_league,aes(x=Season,y=ForeignersMinutesPercent,color=NationalLeague))+
+  geom_line(size=1)+
+  labs(title="Time played by Foreigners over time",y="Minutes Percent")+
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  )+
+  labs(color="National League")
+p2<-ggplot(arm_pl_league,aes(x=ForeignersMinutesPercent,y=UEFARanking))+
+  geom_point() +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(title="Time played by Foreigners vs UEFA Ranking",x="Minutes Percent",y="Ranking")+
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  facet_wrap(~NationalLeague)
+grid.arrange(p1,p2,ncol = 1)
+```
+The first graph shows how the percentage of the minutes of the games played by foreigners changed over the years for the three countries. We can see that Armenian numbers increased and even reached 60% at one point. Georgia always had the lowest percentage of foreigners, whereas Azerbaijani, which has the best league, tries to lower the impact and the portion of foreign players in their league.
+In the second graph, we can see that foreigners positively impacted the Armenian league's ranking, and with their help, the league's overall results improved. Still, in the cases of Azerbaijan and Georgia, we can see the opposite picture.
+
+## Armenian National Football League Analysis
+
+```{r include=FALSE}
+foreign_impact_dat <- armenian_team_dat %>%
+  mutate(PosDif = abs(ForeignersPosition - Position)) 
+
+foreign_impact_dat <- foreign_impact_dat %>%
+  group_by(Season) %>%
+  summarise(MeanPosDif = mean(PosDif), AllFor = sum(ForeignersInTheTeam), AllPlay = sum(PlayersUsed))
+
+foreign_impact_dat <- foreign_impact_dat %>%
+  mutate(PercFor = AllFor * 100 / AllPlay) %>%
+  mutate(PosDifPerc = MeanPosDif * 10 )
+```
+```{r echo=FALSE}
+ggplot(foreign_impact_dat, aes(x = Season, y = PercFor)) +
+  geom_bar(stat = "identity") +
+  geom_line(aes(y = PosDifPerc, group = 1, colour = "Mean Position Difference Percentage"), size = 1.5) +
+  coord_flip() +
+    scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
+  scale_colour_manual("", values = c("Mean Position Difference Percentage" = "red")) +
+  labs(title = "Foreigner Percentage and Position Difference by Foreigners",
+       x = "Season",
+       y = "Position Difference/Foreigner Percentage") +
+  theme(
+    legend.position = 'top', 
+    axis.ticks.y = element_blank(), 
+    axis.text.x = element_text(size = 7.4),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+Now, let’s concentrate on our league and its problems. Here, we can see how the foreigner’s percentage change and their impact on the league correlate. The red line shows the average position difference if only the goals scored by the foreign players were counted. So, we can see that in the first years of the observation – when there were fewer foreigners overall, their impact was higher, and it got lower as the number of foreigners increased. The reason may be that only a few clubs had foreign players the first time, and this ranking affected the teams without foreigners a lot. Over the years, all the clubs got many foreigners who had the same impact on the league.
+
+```{r, include= F}
+arm <- st_read('Map_Data/Armenia_Marzes.shp', quiet = TRUE)
+arm_solar <- raster('Armenia_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif')
+arm <- st_transform(arm, crs(arm_solar))
+```
+```{r, include=FALSE}
+ armenian_team_dat$Trophies[is.na(armenian_team_dat$Trophies)] = 0
+
+armenian_team_dat_marz <- armenian_team_dat %>%
+  mutate(Marz = case_when(
+    City == 'Yerevan' ~ 'YEREVAN', 
+    City == 'Ashtarak' ~ 'ARAGATSOTN', 
+    City == 'Dilijan' ~ 'TAVUSH', 
+    City == 'Kapan' ~ 'SYUNIK', 
+    City == 'Gyumri' ~ 'SHIRAK', 
+    City == 'Vanadzor' ~ 'LORI', 
+    City == 'Charentsavan' ~ 'KOTAYK', 
+    City == 'Vayk' ~ 'VAYOTZ DZOR', 
+    City == 'Sevan' ~ 'GEGHARKUNIK', 
+    City == 'Goris' ~ 'SYUNIK' 
+  ))
+```
+```{r, include=FALSE}
+armenian_team_dat_part <- armenian_team_dat_marz %>%
+    group_by(Marz) %>%
+  tally()
+names(armenian_team_dat_part) <- c('Marz', 'SeasonCount')
+
+Participation_data <- arm %>%  
+  left_join(armenian_team_dat_part, by = c('Name_Eng' = 'Marz'))
+Participation_data$SeasonCount[is.na(Participation_data$SeasonCount)] = 0
+```
+```{r include=FALSE}
+p1<-ggplot(data = Participation_data, aes(fill = SeasonCount)) + geom_sf() +
+  scale_fill_gradient(low = "white", high = "red", name = "Participation") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(title = "Region's Participation Distribution in Armenia")
+```
+```{r include=FALSE}
+armenian_team_WYer <- armenian_team_dat_part[-which(armenian_team_dat_part$Marz == 'YEREVAN' ),]
+
+Participation_data_WYER <- arm %>%  
+  left_join(armenian_team_WYer, by = c('Name_Eng' = 'Marz'))
+Participation_data_WYER$SeasonCount[is.na(Participation_data_WYER$SeasonCount)] = 0
+```
+```{r include=FALSE}
+p2<-ggplot(data = Participation_data_WYER, aes(fill = SeasonCount)) + geom_sf() +
+  scale_fill_gradient(low = "white", high = "red", name = "Participation") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(title = "Participation Distribution in Armenia(No Yerevan)",)
+```
+```{r, include = F}
+armenian_team_dat_troph <- armenian_team_dat_marz %>%
+    group_by(Marz) %>%
+  summarise(sum(Trophies))
+names(armenian_team_dat_troph) <- c('Marz', 'Trophies')
+```
+```{r, include = F}
+Trophies_Data <- arm %>%  
+  left_join(armenian_team_dat_troph, by = c('Name_Eng' = 'Marz'))
+Trophies_Data$Trophies[is.na(Trophies_Data$Trophies)] = 0
+```
+```{r echo=FALSE,fig.width=9.5}
+p3<-ggplot(data = Trophies_Data, aes(fill = Trophies)) + geom_sf() +
+  scale_fill_gradient(low = "white", high = "red", name = "Trophies") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(title = "Trophy Distribution in Armenian Regions")
+grid.arrange(p1,p2,p3,ncol = 2)
+```
+Here, we can see another worrying statistic for Armenian football. We can see that Armenian football teams are too centralized in Yerevan. We can see that most of the football teams that participated in our football league through these 13 years are from Yerevan, and there are even two marzes that had no teams at all. We can also see the trophy distribution, which again is very centralized in Yerevan, and there are only a few clubs from other marzes to win a trophy through these years.
+These can hinder the development of young Armenian players out of Yerevan, as they don’t have the facilities and sports clubs. Also, in terms of motivation – they don’t see good players, or at least any professional players in their region, to get a hope that it is possible to play football professionally in the marzes and train to become a professional.
+
+```{r, include = F}
+heatmap_dat <- armenian_team_dat %>% dplyr::select("Team", 'Season', 'Position')
+```
+```{r echo=FALSE}
+ggplot(data = heatmap_dat, mapping = aes(x = Season, y = Team, fill = Position)) + 
+  geom_tile() +
+  labs(title="Heatmap of Armenian League Teams Positions over time",y="")+
+  theme(
+    panel.background = element_blank(), 
+    axis.text.x = element_text(angle = 90,vjust=0.5),
+    plot.title = element_text(hjust = 0.5)
+  ) + 
+  scale_fill_continuous(low = 'red', high = 'white')
+```
+Here, we can see the positions of all the teams that competed in the Armenian league in the last 13 seasons. We can see that most teams didn’t last long; they either got dissolved or relegated very early.
+
+```{r, include = F}
+heatmap_dat_filtered <- heatmap_dat %>%
+  filter(Team %in% c('Banants', 'Urartu', 'Ulysses', 'Shirak', 'Pyunik', 'Mika', 'Noah', 'Gandzasar', 'Ararat', 'Ararat-Armenia'))
+```
+
+```{r echo=FALSE}
+ggplot(data = heatmap_dat_filtered, mapping = aes(x = Season, y = Team, fill = Position)) + 
+  geom_tile() +
+  labs(title="Heatmap of Armenian League Top Teams Positions over time",y="")+
+  theme(
+    panel.background = element_blank(), 
+    axis.text.x = element_text(angle = 90,vjust=0.5),
+    plot.title = element_text(hjust = 0.5)
+  ) + 
+  scale_fill_continuous(low = 'red', high = 'white')
+```
+This graph shows that only 8 (Urartu and Banants are the same club) out of the 20 teams participated in at least four seasons of the league through these 13 years of observations. Only 2 of these teams are out of other marzes than Yerevan, one of which is Gandzasar, who got relegated in 2020 and didn't return. The other one is Shirak, which has a lot of problems and whose results got worse and worse after 2013. Shirak even got relegated in 2021 and didn't participate in the Armenian League.
+From here, we can conclude that clubs face many problems when competing at the highest level in Armenia. They either get low financing or don't get the opportunity to get high-quality players for their clubs, which brings relegation or dissolution.
+
+```{r include=FALSE}
+histogram_dat <- armenian_team_dat %>%
+  filter(Team %in% c('Banants', 'Urartu', 'Ulysses', 'Shirak', 'Pyunik', 'Mika', 'Noah', 'Gandzasar', 'Ararat', 'Ararat-Armenia'))
+team_count <- (histogram_dat %>%
+  group_by(Team) %>%
+  tally())$n
+histogram_dat <- histogram_dat%>%
+  group_by(Team) %>%
+  summarise(GoalDiffSum = sum(GoalDifference)) %>%
+  mutate(SeasonsPart = team_count)
+```
+```{r echo=FALSE}
+ggplot(histogram_dat, aes(x = Team, y = GoalDiffSum/SeasonsPart)) +
+  geom_col() +
+  labs(title = 'Goal Difference per Season for top Teams', 
+       x = '', 
+       y = 'Difference')+
+  theme_minimal()+
+  theme(
+    axis.text.x = element_text(angle = 90,vjust=0.5),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+Another evidence that few teams compete in the Armenian League is the goal difference through the years. We can see that only three teams have a significantly high goal difference, meaning they had good results in the league.
+
+The lack of competitiveness in the league results in a lack of motivation for players. This also results in less interest in the league from the public. No one attends the football matches, and no one actually watches them. This can result in no motivation for players to play. To play and win for whom?
+
+```{r echo=FALSE}
+filtered_pyunik <- armenian_team_dat %>%
+  filter(Team == "Pyunik")
+ggplot(filtered_pyunik, aes(x = Season, y = ForeignersMinutesPercent)) +
+  geom_line(aes(y = ForeignersMinutesPercent, group = 1, colour = "Foreigners Gametime"), size = 1.5)+
+  labs(title="Foreigners played Minutes Percent of Pyunik",y="Minutes Percent")+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5)
+    )+
+  scale_x_discrete(breaks = c("2010/11", "2013/14", "2015/16","2017/18","2019/20","2021/22"))
+```
+
+Another problem for the league is the scandals and fixed matches. There were plenty of them through these years. In the last 13 years, we witnessed the fixed matches of Ulysses, FC Yerevan, Shirak, different clubs of the Second League, etc. This year, we will see another scandal too - this time connected to West Armenia. This is a very worrying trend because the existence of fixed matches in the league can result in a lack of trust from public and international organizations. 
+
+Besides fixed matches, there were different scandals, too. One of them is connected with Pyunik, one of the only teams in Armenia that didn’t use foreign players and developed Armenian players until 2018, when they were derived from the Armenian Academy and got no support of Armenian young players after it. We can see the drastic rise in the number of foreigners in Pyunik.
+
+\newpage
+
+## Conclusion and Recommendations
+
+Through this analysis, we discussed the main reasons for the Armenian national football team's bad performances and the problems of Armenian football, which hold us back in this sport. 
+Some of the reasons for lousy performance include low population and history of being a post-Soviet country, which cannot be changed. Also, we saw that having a foreign coach improves the national team's results. Nevertheless, one of the main pledges of having good results is having good players, which can be done by improving our national league. Currently, our national league includes many foreigners, because of which Armenian players don't get enough chances to play and improve. We saw that even though foreigners improve our league, their presence doesn't help our players to improve. Besides that, Armenian football has a massive problem with centralization and scandals, which hinder our development.
+
+Currently, the Armenian Football League mandates only three Armenian players in the starting lineup, limiting opportunities for local talent. We recommend revising this regulation by increasing the required number of Armenian players. While this adjustment might initially impact the league's results in Europe, it is a crucial step toward nurturing local talent and enhancing the prospects of Armenian football. We can see this in Georgia's example, whose league is not the best but gives the best players. Secondly, we would recommend the Armenian Federation prioritize support for Armenian football clubs, particularly in establishing good academies and improving training facilities for young players. Increased funding and resources dedicated to club development can bolster the stability of local talent, providing them with a solid foundation to thrive and earn a transfer to better teams. Finally, we recommend the football federation make stricter policies to combat match-fixing within the league. We should have no tolerance for match-fixing to uphold the integrity and credibility of Armenian football.
+
+Also, you can see our dashboard which is created mainly for football enthusiasts and some statisticians/data scientists of the sphere.
+
+https://armenianfootball.shinyapps.io/analysis/
+
+\newpage
+
+## References
+
+Armenia - Club profile. Transfermarkt. https://www.transfermarkt.us/armenien/startseite/verein/6219 
+
+Bardzraguyn khumb 23/24 . Transfermarkt. https://www.transfermarkt.us/bardsragujn-chumb/startseite/wettbewerb/ARM1 
+
+Men’s ranking. FIFA.com. https://www.fifa.com/fifa-world-ranking/men 
+
+Armenia - Results. The Sports. https://www.the-sports.org/football-soccer-armenia-results-identity-equ943.html
+
+General Information for Armenia. National Football Teams. https://www.national-football-teams.com/country/10/2022/Armenia.html 
+
+Adelugba, R., Okugbe, J., Connor, A., Murray, R., &amp; Pracy, E. (2022, December 9). The rise of Georgian football. Football Paradise. https://www.footballparadise.com/the-rise-of-georgian-football/ 
+
+Koryun Simonyan (2018, June 27). Hertakan scandaly - Hayastani footballi arajnutyunum. HRAPARAK https://hraparak.am/post/5b332dcd5724f9386185f4ca
+
+NEWS.am. (2018, July 16). "Pyuniky" cayrahex vrdovvac e HFF gorcoxutyunneric. News.am  https://sport.news.am/arm/news/90932
+
+Vahe Sarukhanyan. (2019, January 24). Haykakan akumbayin footballi amenamec scandaly kam "Ulisi" vodisakany. Hetq.am. https://hetq.am/hy/article/100300
+
+Davit Jalalyan. (2019, October 25). Footballayin xaxeri arucaxy Hayastanum caxkum e? Azdak iravapahnerin. 1in.am. https://www.1in.am/2646765.html
+
+Factor TV. (2020, June 27). HFF-n 5 akumneri mexadrum e paymanavorvac xaxeri masnakcelu hamar. factor.am. https://factor.am/264225.html
+
+Samson Martirosyan. (2023, December 7). "West Armenia" footballayin akumbi tnoreni vordin paymanavorvac xaxeri hancavor sindicati erkrord demqn e exel. Hetq.am. https://hetq.am/hy/article/162655
